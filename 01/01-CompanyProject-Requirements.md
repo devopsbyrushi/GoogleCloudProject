@@ -68,7 +68,7 @@ can be built and deployed on its own. Repositories use an `fec-` prefix
 
 | Repository | Responsibility |
 |------------|----------------|
-| `fec-eureka` | Service discovery / registry |
+| `fec-login` | Service discovery / registry |
 | `fec-gateway` | API gateway — routing, auth checks, rate limiting |
 | `fec-config` | Centralized configuration server |
 | `fec-auth` | Login, tokens, and authorization |
