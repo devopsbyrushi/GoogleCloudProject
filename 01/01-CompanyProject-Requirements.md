@@ -21,8 +21,7 @@ many services through one consistent, automated path.
 
 A few decisions were locked in up front and shape everything else:
 
-- **Cloud first, GCP now:** the platform launches on Google Cloud Platform, with
-  room to extend to AWS in a later phase.
+- **Cloud first, GCP now:** the platform launches on Google Cloud Platform
 - **Everything as code:** infrastructure is never clicked together by hand — it is
   described in Terraform and version-controlled.
 - **Clean separation of concerns:** application code and infrastructure/config
