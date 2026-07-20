@@ -41,7 +41,7 @@ Rather than a single stack list, here is what each layer uses and why.
 
 | Area | Choice | Purpose |
 |------|--------|---------|
-| Cloud | GCP (AWS later) | Host all infrastructure and workloads |
+| Cloud | GCP  | Host all infrastructure and workloads |
 | Provisioning | Terraform | Declare and manage every cloud resource |
 | Configuration | Ansible | Install/configure tools on the build & scan hosts (not the DB) |
 | Source control | GitHub | Version control with protected branches |
