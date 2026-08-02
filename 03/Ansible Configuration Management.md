@@ -1,700 +1,204 @@
-# 🚀 Ansible Setup on Google Cloud
 
-> **Goal:** Install Ansible on a main/control server, configure
-> passwordless SSH to a managed server, grant the `rushiawslabs` user
-> passwordless sudo access, create an Ansible inventory, deploy Nginx
-> using a YAML playbook, and verify the service state.
+# Ansible Installation & Configuration on Ubuntu 24.04 LTS
 
-------------------------------------------------------------------------
+## Introduction to Ansible
 
-## 🏗️ Lab Architecture
+Ansible is an open-source automation tool used for configuration management, application deployment, software provisioning, and server orchestration. It is agentless, which means it communicates with managed servers over SSH without requiring any agent installation.
 
-  -----------------------------------------------------------------------
-  Server            Hostname          Role              User
-  ----------------- ----------------- ----------------- -----------------
-  Server 1          `ansibletest-1`   Ansible Control / `rushiawslabs`
-                                      Main Server       
+In this guide, we will install Ansible on Ubuntu 24.04 LTS, configure the controller machine, establish passwordless SSH connectivity with managed nodes, execute ad-hoc commands, and run our first Ansible playbook.
 
-  Server 2          `ansibletest-2`   Managed / Target  `rushiawslabs`
-                                      Server            
-  -----------------------------------------------------------------------
+---
 
-``` text
-┌──────────────────────────────┐
-│       ansibletest-1          │
-│   ANSIBLE CONTROL SERVER     │
-│                              │
-│   • Ansible installed        │
-│   • inventory.ini            │
-│   • nginx.yml                │
-└──────────────┬───────────────┘
-               │
-               │ Passwordless SSH
-               ▼
-┌──────────────────────────────┐
-│       ansibletest-2          │
-│      MANAGED SERVER          │
-│                              │
-│   • Python                   │
-│   • Nginx                    │
-│   • Passwordless sudo        │
-└──────────────────────────────┘
-```
+# Lab Architecture
 
-> **Note:** Replace `<SERVER-2-IP>` with the actual **internal IP
-> address** of `ansibletest-2`.
+* 1 Ansible Controller (Ubuntu 24.04 LTS)
+* 1 or More Managed Nodes (Ubuntu 24.04 LTS)
+* Passwordless SSH Connectivity between Controller and Managed Nodes
 
-------------------------------------------------------------------------
+---
 
-# 1️⃣ Install Ansible on the Main Server
+# Installing Ansible
 
-### 📍 Run on: `ansibletest-1`
+Update the package repository and install Ansible using the following commands.
 
-Update the package list:
-
-``` bash
+```bash
 sudo apt update
-```
-
-Install Ansible:
-
-``` bash
+sudo apt upgrade -y
 sudo apt install ansible -y
-```
-
-Verify the installation:
-
-``` bash
 ansible --version
 ```
 
-> ✅ Ansible needs to be installed only on the **control/main server**.
+If the `/etc/ansible` directory is not available, create it manually.
 
-------------------------------------------------------------------------
-
-# 2️⃣ Generate an SSH Key
-
-### 📍 Run on: `ansibletest-1`
-
-Generate an SSH key pair:
-
-``` bash
-ssh-keygen -t rsa
+```bash
+sudo mkdir -p /etc/ansible
 ```
 
-Press **Enter** for all prompts:
-
-``` text
-Enter file in which to save the key: ENTER
-Enter passphrase: ENTER
-Enter same passphrase again: ENTER
-```
-
-Verify the generated keys:
-
-``` bash
-ls ~/.ssh/
-```
-
-You should see:
-
-``` text
-id_rsa
-id_rsa.pub
-```
-
-------------------------------------------------------------------------
-
-# 3️⃣ Copy the SSH Key to Server 2
-
-### 📍 Run on: `ansibletest-1`
-
-Copy the public key to the managed server:
-
-``` bash
-ssh-copy-id rushiawslabs@<SERVER-2-IP>
-```
-
-Example:
-
-``` bash
-ssh-copy-id rushiawslabs@10.128.0.3
-```
-
-> The first connection may ask for the Server 2 password or SSH
-> confirmation.
-
-------------------------------------------------------------------------
-
-# 4️⃣ Test Passwordless SSH
-
-### 📍 Run on: `ansibletest-1`
-
-Connect to Server 2:
-
-``` bash
-ssh rushiawslabs@<SERVER-2-IP>
-```
-
-Example:
-
-``` bash
-ssh rushiawslabs@10.128.0.3
-```
-
-If the login succeeds without asking for a password:
-
-``` text
-Passwordless SSH = SUCCESS ✅
-```
-
-Your prompt should change from:
-
-``` text
-rushiawslabs@ansibletest-1:~$
-```
-
-to:
-
-``` text
-rushiawslabs@ansibletest-2:~$
-```
-
-------------------------------------------------------------------------
-
-# 5️⃣ Give `rushiawslabs` Passwordless Sudo Permission
-
-### 📍 Run on: `ansibletest-2`
-
-Open the sudoers file:
-
-``` bash
-sudo vi /etc/sudoers
-```
-
-Add the following entry at the bottom:
-
-``` text
-rushiawslabs ALL=(ALL) NOPASSWD: ALL
-```
-
-Save and exit from `vi`:
-
-``` text
-ESC
-:wq
-ENTER
-```
-
-This allows Ansible to use `sudo` without prompting for a password.
-
-Return to Server 1:
-
-``` bash
-exit
-```
-
-You should now be back on:
-
-``` text
-rushiawslabs@ansibletest-1:~$
-```
-
-------------------------------------------------------------------------
-
-# 6️⃣ Create the Ansible Project Directory
-
-### 📍 Run on: `ansibletest-1`
-
-Create the project directory:
-
-``` bash
-mkdir -p ~/ansible-project
-```
-
-Enter the directory:
-
-``` bash
-cd ~/ansible-project
-```
-
-Verify:
-
-``` bash
-pwd
-```
-
-Expected path:
-
-``` text
-/home/rushiawslabs/ansible-project
-```
-
-------------------------------------------------------------------------
-
-# 7️⃣ Create the Inventory File
-
-### 📍 Run on: `ansibletest-1`
-
-Create the inventory file:
-
-``` bash
-nano inventory.ini
-```
-
-Add:
-
-``` ini
-[webservers]
-ansibletest-2 ansible_host=<SERVER-2-IP>
-
-[webservers:vars]
-ansible_user=rushiawslabs
-ansible_python_interpreter=/usr/bin/python3
-```
-
-Example:
-
-``` ini
-[webservers]
-ansibletest-2 ansible_host=10.128.0.3
-
-[webservers:vars]
-ansible_user=rushiawslabs
-ansible_python_interpreter=/usr/bin/python3
-```
-
-Save the file:
-
-``` text
-CTRL + O
-ENTER
-CTRL + X
-```
-
-Verify:
-
-``` bash
-cat inventory.ini
-```
-
-------------------------------------------------------------------------
-
-# 8️⃣ Test the Ansible Connection
-
-### 📍 Run on: `ansibletest-1`
-
-Run the Ansible ping module:
-
-``` bash
-ansible all -i inventory.ini -m ping
-```
-
-Expected result:
-
-``` text
-ansibletest-2 | SUCCESS => {
-    "changed": false,
-    "ping": "pong"
-}
-```
-
-> 🎯 `"ping": "pong"` confirms that Ansible can successfully communicate
-> with the managed server.
-
-------------------------------------------------------------------------
-
-# 9️⃣ Test a Remote Command
-
-### 📍 Run on: `ansibletest-1`
-
-Check the hostname of the managed server:
-
-``` bash
-ansible all -i inventory.ini -a "hostname"
-```
-
-Expected:
-
-``` text
-ansibletest-2
-```
-
-You can also check uptime:
-
-``` bash
-ansible all -i inventory.ini -a "uptime"
-```
-
-These commands are entered on **Server 1** but executed remotely on
-**Server 2**.
-
-------------------------------------------------------------------------
-
-# 🔟 Create an Nginx YAML Playbook
-
-### 📍 Run on: `ansibletest-1`
-
-Create the playbook:
-
-``` bash
-nano nginx.yml
-```
-
-Add:
-
-``` yaml
 ---
-- name: Install and Start Nginx
-  hosts: webservers
+
+# Configuring Ansible
+
+Edit the Ansible configuration file.
+
+```bash
+sudo nano /etc/ansible/ansible.cfg
+```
+
+Add the following configuration.
+
+```ini
+[defaults]
+inventory=/etc/ansible/hosts
+host_key_checking=False
+remote_user=client
+forks=5
+timeout=30
+```
+
+> Replace `client` with your Linux username if required.
+
+---
+
+# Configuring the Inventory File
+
+Create or edit the inventory file.
+
+```bash
+sudo nano /etc/ansible/hosts
+```
+
+Single managed node:
+
+```ini
+[client]
+35.xxx.xxx.xxx ansible_user=client
+```
+
+Multiple managed nodes:
+
+```ini
+[webservers]
+10.10.0.4 ansible_user=client
+10.10.0.5 ansible_user=client
+```
+
+---
+
+# Establishing Passwordless SSH Connectivity
+
+Generate an SSH key on the Ansible Controller.
+
+```bash
+ssh-keygen
+cat ~/.ssh/id_rsa.pub
+```
+
+On the managed node, create the SSH directory if required.
+
+```bash
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+nano ~/.ssh/authorized_keys
+```
+
+Paste the public key into the `authorized_keys` file and save it.
+
+Set the required permissions.
+
+```bash
+chmod 600 ~/.ssh/authorized_keys
+```
+
+Verify SSH connectivity.
+
+```bash
+ssh client@35.xxx.xxx.xxx
+```
+
+---
+
+# Testing Ansible Connectivity
+
+Run the following commands to verify communication with the managed nodes.
+
+```bash
+ansible all -m ping
+ansible all -a "hostname"
+ansible all -a "df -h"
+ansible all -a "free -h"
+ansible all -a "uptime"
+```
+
+---
+
+# Configuring Passwordless Sudo
+
+To execute playbooks with `become: yes`, configure passwordless sudo on each managed node.
+
+```bash
+sudo visudo
+```
+
+Add the following entry.
+
+```text
+client ALL=(ALL) NOPASSWD:ALL
+```
+
+Verify the configuration.
+
+```bash
+sudo -l
+```
+
+---
+
+# Running Your First Ansible Playbook
+
+Create a file named `playbook.yaml`.
+
+```yaml
+---
+- name: Install Apache
+  hosts: all
   become: yes
 
   tasks:
-
-    - name: Install Nginx
+    - name: Install Apache
       apt:
-        name: nginx
+        name: apache2
         state: present
         update_cache: yes
-
-    - name: Start Nginx Service
-      service:
-        name: nginx
-        state: started
-        enabled: yes
 ```
 
-Save:
+Execute the playbook.
 
-``` text
-CTRL + O
-ENTER
-CTRL + X
+```bash
+ansible-playbook playbook.yaml
 ```
 
-------------------------------------------------------------------------
-
-# 1️⃣1️⃣ Check the YAML Syntax
-
-### 📍 Run on: `ansibletest-1`
-
-Always check the playbook syntax before execution:
-
-``` bash
-ansible-playbook -i inventory.ini nginx.yml --syntax-check
-```
-
-Expected:
-
-``` text
-playbook: nginx.yml
-```
-
-> ✅ This confirms that the YAML/playbook syntax is valid.
-
-------------------------------------------------------------------------
-
-# 1️⃣2️⃣ Run the Nginx Playbook
-
-### 📍 Run on: `ansibletest-1`
-
-Execute:
-
-``` bash
-ansible-playbook -i inventory.ini nginx.yml
-```
-
-Expected recap:
-
-``` text
-PLAY RECAP
-ansibletest-2 : ok=3 changed=1 unreachable=0 failed=0
-```
-
-Important values:
-
-``` text
-unreachable=0
-failed=0
-```
-
-This means the playbook completed successfully. ✅
-
-------------------------------------------------------------------------
-
-# 1️⃣3️⃣ Verify the Nginx Service State
-
-### 📍 Run on: `ansibletest-1`
-
-Check whether Nginx is running:
-
-``` bash
-ansible all -i inventory.ini -a "systemctl is-active nginx"
-```
-
-Expected:
-
-``` text
-active
-```
-
-Check whether Nginx is enabled at boot:
-
-``` bash
-ansible all -i inventory.ini -a "systemctl is-enabled nginx"
-```
-
-Expected:
-
-``` text
-enabled
-```
-
-------------------------------------------------------------------------
-
-# 1️⃣4️⃣ Optional: Check Nginx State Using a YAML Playbook
-
-### 📍 Run on: `ansibletest-1`
-
-Create:
-
-``` bash
-nano check-nginx.yml
-```
-
-Add:
-
-``` yaml
 ---
-- name: Check Nginx Status
-  hosts: webservers
-  become: yes
 
-  tasks:
+# Common Ansible Ad-hoc Commands
 
-    - name: Get Nginx Service Status
-      command: systemctl is-active nginx
-      register: nginx_status
-      changed_when: false
-
-    - name: Display Nginx Status
-      debug:
-        msg: "Nginx State = {{ nginx_status.stdout }}"
+```bash
+ansible all -m ping
+ansible all -m setup
+ansible all -a "hostname"
+ansible all -a "whoami"
+ansible all -a "date"
+ansible all -a "df -h"
+ansible all -a "free -h"
+ansible all -a "uptime"
+ansible all -m copy -a "src=/etc/hosts dest=/tmp/hosts"
+ansible all -m file -a "path=/tmp/testfile state=touch"
+ansible all -m service -a "name=apache2 state=started" --become
+ansible all -m service -a "name=apache2 state=stopped" --become
+ansible all -m apt -a "name=apache2 state=latest" --become
 ```
 
-Run:
+---
 
-``` bash
-ansible-playbook -i inventory.ini check-nginx.yml
-```
+# Conclusion
 
-Expected:
-
-``` text
-Nginx State = active
-```
-
-------------------------------------------------------------------------
-
-# 📘 Understanding `state` in Ansible
-
-## Package State
-
-``` yaml
-state: present
-```
-
-Means the package **must be installed**.
-
-``` yaml
-state: absent
-```
-
-Means the package **must be removed**.
-
-## Service State
-
-``` yaml
-state: started
-```
-
-Means the service **must be running**.
-
-``` yaml
-state: stopped
-```
-
-Means the service **must be stopped**.
-
-``` yaml
-state: restarted
-```
-
-Means the service should be **restarted**.
-
-## Enable Service at Boot
-
-``` yaml
-enabled: yes
-```
-
-Means the service should start automatically after a server reboot.
-
-### Quick Reference
-
-  Setting              Meaning
-  -------------------- -----------------------------------------
-  `state: present`     Package should be installed
-  `state: absent`      Package should be removed
-  `state: started`     Service should be running
-  `state: stopped`     Service should be stopped
-  `state: restarted`   Service should be restarted
-  `enabled: yes`       Start automatically after reboot
-  `enabled: no`        Do not start automatically after reboot
-
-> **Important:** `state=true` is generally not the syntax used for
-> package/service state. `state` uses values such as `present`,
-> `absent`, `started`, and `stopped`. Boolean values such as `yes/no` or
-> `true/false` are commonly used with options such as `enabled`.
-
-------------------------------------------------------------------------
-
-# ⚡ Quick Command Reference
-
-## 🖥️ Server 1 --- `ansibletest-1`
-
-### Install Ansible
-
-``` bash
-sudo apt update
-sudo apt install ansible -y
-ansible --version
-```
-
-### Configure Passwordless SSH
-
-``` bash
-ssh-keygen -t rsa
-ssh-copy-id rushiawslabs@<SERVER-2-IP>
-ssh rushiawslabs@<SERVER-2-IP>
-```
-
-------------------------------------------------------------------------
-
-## 🖥️ Server 2 --- `ansibletest-2`
-
-### Configure Sudo Permission
-
-``` bash
-sudo vi /etc/sudoers
-```
-
-Add:
-
-``` text
-rushiawslabs ALL=(ALL) NOPASSWD: ALL
-```
-
-Return to Server 1:
-
-``` bash
-exit
-```
-
-------------------------------------------------------------------------
-
-## 🖥️ Back on Server 1 --- `ansibletest-1`
-
-### Create Project and Inventory
-
-``` bash
-mkdir -p ~/ansible-project
-cd ~/ansible-project
-nano inventory.ini
-```
-
-### Test Connectivity
-
-``` bash
-ansible all -i inventory.ini -m ping
-```
-
-### Create and Run Playbook
-
-``` bash
-nano nginx.yml
-ansible-playbook -i inventory.ini nginx.yml --syntax-check
-ansible-playbook -i inventory.ini nginx.yml
-```
-
-### Verify Nginx
-
-``` bash
-ansible all -i inventory.ini -a "systemctl is-active nginx"
-ansible all -i inventory.ini -a "systemctl is-enabled nginx"
-```
-
-------------------------------------------------------------------------
-
-# 🔄 Complete Ansible Workflow
-
-``` text
-Install Ansible on ansibletest-1
-                │
-                ▼
-        Generate SSH Key
-                │
-                ▼
-     Copy Key to ansibletest-2
-                │
-                ▼
-       Passwordless SSH
-                │
-                ▼
-   Configure Passwordless Sudo
-                │
-                ▼
-       Create inventory.ini
-                │
-                ▼
-        Ansible Ping Test
-                │
-                ▼
-          Create nginx.yml
-                │
-                ▼
-          Syntax Check
-                │
-                ▼
-          Run Playbook
-                │
-                ▼
-      Nginx Installed & Started
-                │
-                ▼
-    Check Active/Enabled State
-                │
-                ▼
-             SUCCESS ✅
-```
-
-------------------------------------------------------------------------
-
-## ✅ Final Result
-
-After completing this lab:
-
--   Ansible is installed on `ansibletest-1`.
--   `ansibletest-1` can connect to `ansibletest-2` using passwordless
-    SSH.
--   `rushiawslabs` has passwordless sudo permission on the managed
-    server.
--   The managed server is configured in `inventory.ini`.
--   Ansible connectivity is verified using the `ping` module.
--   Nginx is installed, started, and enabled using `nginx.yml`.
--   Nginx service state is verified from the Ansible control server.
-
-------------------------------------------------------------------------
-
-**Ansible Control Node → Inventory → Passwordless SSH → Sudo → Playbook
-→ Managed Node → State Verification**
+You have successfully installed and configured Ansible on Ubuntu 24.04 LTS, established passwordless SSH connectivity with managed nodes, configured passwordless sudo, executed ad-hoc commands, and deployed your first Ansible playbook. This setup provides the foundation for automating Linux server administration using Ansible.
