@@ -1,0 +1,13 @@
+sudo nano /etc/asnible/hosts
+  
+[docker]
+34.71.65.250 ansible_user=docker
+
+[monitoring]
+136.64.153.188 ansible_user=monitoring
+
+[sonar]
+35.188.159.3 ansible_user=sonar
+
+[master]
+34.136.119.25 ansible_user=amaster
