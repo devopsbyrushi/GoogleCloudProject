@@ -1,6 +1,6 @@
 ---
 - name: Common Configuration
-  hosts: docker,monitoring,sonar,master
+  hosts: docker,monitoring,sonar,jenkins
   become: yes
 
   tasks:
