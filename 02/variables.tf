@@ -23,6 +23,7 @@ variable "zone" {
 
 variable "project_name" {
   description = "Project Name"
+  type        = string
   default     = "bankingproject2026"
 }
 
@@ -31,29 +32,105 @@ variable "project_name" {
 #################################################
 
 variable "network_name" {
-  default = "bankingproject2026-vpc"
+  description = "VPC Network Name"
+  type        = string
+  default     = "bankingproject2026-vpc"
 }
 
 variable "subnet_name" {
-  default = "bankingproject2026-subnet"
+  description = "Subnet Name"
+  type        = string
+  default     = "bankingproject2026-subnet"
 }
 
 variable "subnet_cidr" {
-  default = "10.10.0.0/24"
+  description = "Subnet CIDR Range"
+  type        = string
+  default     = "10.10.0.0/24"
 }
 
 #################################################
-# Compute Engine
+# Common Compute Engine Configuration
 #################################################
 
 variable "machine_type" {
-  default = "e2-standard-2"
+  description = "Default machine type for lab servers"
+  type        = string
+  default     = "e2-medium"
 }
 
 variable "disk_size" {
-  default = 30
+  description = "Default boot disk size in GB"
+  type        = number
+  default     = 20
 }
 
 variable "image" {
-  default = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+  description = "Ubuntu 24.04 LTS image"
+  type        = string
+  default     = "ubuntu-os-cloud/ubuntu-2404-lts-amd64"
+}
+
+#################################################
+# Jenkins Server
+#################################################
+
+variable "jenkins_machine_type" {
+  description = "Machine type for Jenkins server"
+  type        = string
+  default     = "e2-medium"
+}
+
+variable "jenkins_disk_size" {
+  description = "Boot disk size for Jenkins server in GB"
+  type        = number
+  default     = 20
+}
+
+#################################################
+# Ansible Server
+#################################################
+
+variable "ansible_machine_type" {
+  description = "Machine type for Ansible server"
+  type        = string
+  default     = "e2-medium"
+}
+
+variable "ansible_disk_size" {
+  description = "Boot disk size for Ansible server in GB"
+  type        = number
+  default     = 20
+}
+
+#################################################
+# SonarQube Server
+#################################################
+
+variable "sonarqube_machine_type" {
+  description = "Machine type for SonarQube server"
+  type        = string
+  default     = "e2-medium"
+}
+
+variable "sonarqube_disk_size" {
+  description = "Boot disk size for SonarQube server in GB"
+  type        = number
+  default     = 20
+}
+
+#################################################
+# Monitoring Server
+#################################################
+
+variable "monitoring_machine_type" {
+  description = "Machine type for Monitoring server"
+  type        = string
+  default     = "e2-medium"
+}
+
+variable "monitoring_disk_size" {
+  description = "Boot disk size for Monitoring server in GB"
+  type        = number
+  default     = 20
 }
